@@ -1,0 +1,85 @@
+{
+  "name": "agentflow",
+  "version": "1.0.0",
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.0.0"
+  }
+}
+// This tells Prisma to use JavaScript/TypeScript
+generator client {
+  provider = "prisma-client-js"
+}
+
+// This connects to your MySQL database
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// --- YOUR TABLES START HERE ---
+
+// 1. Users (People who log in)
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String?
+  workflows Workflow[] // Link to their work
+  createdAt DateTime   @default(now())
+}
+
+// 2. Workflows (The designs on the Canvas)
+model Workflow {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  
+  // "canvasData" stores the node positions, connections, and settings
+  // We use Json because this data is complex and changes often
+  canvasData  Json     
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  runs        WorkflowRun[] // Link to history of runs
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// 3. WorkflowRuns (Every time they click "Run")
+model WorkflowRun {
+  id          String    @id @default(uuid())
+  status      String    @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+  startTime   DateTime  @default(now())
+  endTime     DateTime?
+  
+  workflowId  String
+  workflow    Workflow  @relation(fields: [workflowId], references: [id])
+  
+  steps       ExecutionStep[] // Link to individual agent actions
+}
+
+// 4. ExecutionSteps (The AI Agents working)
+// This is the most important table for "AgentFlow"
+model ExecutionStep {
+  id            String   @id @default(uuid())
+  
+  agentName     String   // e.g., "Web Scraper", "Gemini Pro"
+  nodeId        String   // Which node on the canvas this is
+  
+  // The "Systematic" Storage you wanted:
+  inputData     Json     // What the agent received
+  outputData    Json?    // What the agent produced (The Response)
+  reasoningLogs String?  // The "Thinking" process (Text)
+  
+  cost          Float?   // Cost of this step (0.002, etc.)
+  status        String   @default("PENDING")
+  
+  runId         String
+  run           WorkflowRun @relation(fields: [runId], references: [id])
+  
+  createdAt     DateTime @default(now())
+}
