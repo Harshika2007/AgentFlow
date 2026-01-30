@@ -16,7 +16,7 @@ generator client {
 
 // This connects to your MySQL database
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
